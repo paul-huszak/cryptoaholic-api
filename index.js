@@ -148,8 +148,8 @@ connection.connect((error) => {
 
 const sslServer = https.createServer(
   {
-    key: fs.readFileSync(path.resolve("key.pem")),
-    cert: fs.readFileSync(path.resolve("cert.pem")),
+    key: fs.readFileSync(path.resolve("./security/key.pem")),
+    cert: fs.readFileSync(path.resolve("./security/cert.pem")),
   },
   app
 );
