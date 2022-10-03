@@ -104,14 +104,14 @@ app.post("/login", (req, res) => {
   connection.query(loginSQL, (error, result) => {
     if (error) throw error;
     if (result.length == 0) {
-      res.status(401).json({
+      res.status(404).json({
         response: "Usuario no encontrado...",
       });
     } else {
       if (bcrypt.compareSync(usuarioObj.password, result[0].password)) {
         res.sendStatus(200);
       } else {
-        res.sendStatus(400);
+        res.sendStatus(401);
       }
     }
   });
