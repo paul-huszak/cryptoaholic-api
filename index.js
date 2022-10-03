@@ -5,6 +5,7 @@ const bodyParser = require("body-parser");
 const bcrypt = require("bcryptjs");
 const https = require("https");
 const fs = require("fs");
+var path = require("path");
 
 const salt = bcrypt.genSaltSync(10);
 
@@ -147,8 +148,8 @@ connection.connect((error) => {
 
 const sslServer = https.createServer(
   {
-    key: fs.readFileSync("key.pem"),
-    cert: fs.readFileSync("cert.pem"),
+    key: fs.readFileSync(path.resolve("key.pem")),
+    cert: fs.readFileSync(path.resolve("cert.pem")),
   },
   app
 );
