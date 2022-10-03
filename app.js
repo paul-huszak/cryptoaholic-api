@@ -1,7 +1,10 @@
 const express = require("express");
 const mysql = require("mysql");
+const cors = require("cors");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcrypt");
+const https = require("https");
+const fs = require("fs");
 
 const salt = bcrypt.genSaltSync(10);
 
@@ -9,6 +12,7 @@ const PORT = process.env.PORT || 3050;
 
 const app = express();
 
+app.use(cors());
 app.use(bodyParser.json());
 
 // MySQL
@@ -33,23 +37,23 @@ app.get("/users", (req, res) => {
     if (results.length > 0) {
       res.status(200).json(results);
     } else {
-      res.status(404).send("Content not found...");
+      res.status(404).send("Vaya... el contenido que buscas no existe.");
     }
   });
 });
 
 // Obtener usuario por ID
-app.get("/users/:id", (req, res) => {
-  const { id } = req.params;
+app.get("/users/:nick", (req, res) => {
+  const { nick } = req.params;
 
-  const getOneUserSQL = `SELECT * FROM Usuario WHERE idUser = ${id}`;
+  const getOneUserSQL = `SELECT * FROM Usuario WHERE nickName = "${nick}"`;
 
   connection.query(getOneUserSQL, (err, result) => {
     if (err) throw err;
     if (result.length > 0) {
       res.status(200).json(result);
     } else {
-      res.status(404).send("User not found...");
+      res.status(404).send("Usuario no encontrado...");
     }
   });
 });
@@ -75,18 +79,13 @@ app.post("/register", (req, res) => {
   connection.query(checkUserSQL, (error, result) => {
     if (error) throw error;
     if (result.length > 0) {
-      res.status(409).json({
-        response: "¡Ya existe un usuario con ese nombre!",
-      });
+      res.sendStatus(409);
     } else {
       let hash = bcrypt.hashSync(usuarioObj.password, salt);
       usuarioObj.password = hash;
       connection.query(registerSQL, usuarioObj, (error) => {
         if (error) throw error;
-        res.status(201).json({
-          response: "¡Usuario registrado correctamente!",
-          password: hash,
-        });
+        res.sendStatus(201);
       });
     }
   });
@@ -104,29 +103,26 @@ app.post("/login", (req, res) => {
 
   connection.query(loginSQL, (error, result) => {
     if (error) throw error;
-    if (result.length === 0) {
+    if (result.length == 0) {
       res.status(401).json({
-        response: "No existe usuario con ese nombre...",
+        response: "Usuario no encontrado...",
       });
     } else {
       if (bcrypt.compareSync(usuarioObj.password, result[0].password)) {
-        res.sendStatus(200).json({
-          response: "¡Inicio de sesión correcto!",
-        });
+        res.sendStatus(200);
       } else {
-        res.sendStatus(400).json({
-          response: "¡Contraseña incorrecta!",
-        });
+        res.sendStatus(400);
       }
     }
   });
 });
 
-app.delete("/deleteUser/:id", (req, res) => {
-  const { id } = req.params;
+// Eliminar usuario
+app.delete("/deleteUser/:nick", (req, res) => {
+  const { nick } = req.params;
 
-  const checkUserSQL = `SELECT * FROM Usuario WHERE idUser = ${id}`;
-  const deleteSQL = `DELETE FROM Usuario WHERE idUser = ${id}`;
+  const checkUserSQL = `SELECT * FROM Usuario WHERE nickName = "${nick}"`;
+  const deleteSQL = `DELETE FROM Usuario WHERE nickName = "${nick}"`;
 
   connection.query(checkUserSQL, (error, result) => {
     if (error) throw error;
@@ -137,7 +133,7 @@ app.delete("/deleteUser/:id", (req, res) => {
       });
     } else {
       res.status(404).json({
-        response: "Usuario inexistente...",
+        response: "Usuario no encontrado...",
       });
     }
   });
@@ -149,4 +145,15 @@ connection.connect((error) => {
   console.log("Database server running!");
 });
 
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+const sslServer = https.createServer(
+  {
+    key: fs.readFileSync("./security/key.pem"),
+    cert: fs.readFileSync("./security/cert.pem"),
+  },
+  app
+);
+
+sslServer.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+
+// Export the Express API
+module.exports = app;
