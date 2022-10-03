@@ -5,7 +5,7 @@ const bodyParser = require("body-parser");
 const bcrypt = require("bcryptjs");
 const https = require("https");
 const fs = require("fs");
-var path = require("path");
+const path = require("path");
 
 const salt = bcrypt.genSaltSync(10);
 
@@ -29,6 +29,7 @@ app.get("/", (req, res) => {
   res.send("Cryptoaholic API running!");
 });
 
+// USER REQUESTS
 // Obtener todos los usuarios
 app.get("/users", (req, res) => {
   const getUsersSQL = "SELECT * FROM Usuario";
@@ -43,7 +44,7 @@ app.get("/users", (req, res) => {
   });
 });
 
-// Obtener usuario por ID
+// Obtener usuario por nickName
 app.get("/users/:nick", (req, res) => {
   const { nick } = req.params;
 
@@ -118,6 +119,90 @@ app.post("/login", (req, res) => {
   });
 });
 
+// Obtener todos los portfolios
+app.get("/portfolios", (req, res) => {
+  const getPortfoliosSQL = "SELECT * FROM Portfolio";
+
+  connection.query(getPortfoliosSQL, (err, results) => {
+    if (err) throw err;
+    if (results.length > 0) {
+      res.status(200).json(results);
+    } else {
+      res.status(404).send("Vaya... el contenido que buscas no existe.");
+    }
+  });
+});
+
+// Obtener portfolio por nickName
+app.get("/users/:nick", (req, res) => {
+  const { nick } = req.params;
+
+  const getOnePortfolioSQL = `SELECT * FROM Portfolio WHERE nickName = "${nick}"`;
+
+  connection.query(getOnePortfolioSQL, (err, result) => {
+    if (err) throw err;
+    if (result.length > 0) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).send("Usuario no encontrado...");
+    }
+  });
+});
+
+// Añadir moneda al portfolio
+app.post("/addCoin", (req, res) => {
+  const addCoinObj = {
+    nickName: req.body.nickName,
+    coinSymbol: req.body.coinSymbol,
+  };
+
+  const checkCoinSQL =
+    "SELECT * FROM Moneda WHERE symbol = '" + addCoinObj.coinSymbol + "'";
+  const addCoinSQL = "INSERT INTO Portfolio SET ?";
+
+  connection.query(checkCoinSQL, (error, result) => {
+    if (error) throw error;
+    if (result.length > 0) {
+      res.sendStatus(409);
+    } else {
+      connection.query(addCoinSQL, addCoinObj, (error) => {
+        if (error) throw error;
+        res.sendStatus(201);
+      });
+    }
+  });
+});
+
+// Eliminar moneda del portfolio
+app.delete("/delCoin", (req, res) => {
+  const delCoinObj = {
+    nickName: req.body.nickName,
+    coinSymbol: req.body.coinSymbol,
+  };
+
+  const checkCoinSQL =
+    "SELECT * FROM Moneda WHERE symbol = '" + delCoinObj.coinSymbol + "'";
+  const delCoinSQL =
+    "DELETE FROM Portfolio WHERE nickName = '" +
+    delCoinObj.nickName +
+    "' AND coinSymbol = '" +
+    delCoinObj.coinSymbol +
+    "'";
+
+  connection.query(checkCoinSQL, (error, result) => {
+    if (error) throw error;
+    if (result.length > 0) {
+      res.sendStatus(409);
+    } else {
+      connection.query(delCoinSQL, delCoinObj, (error) => {
+        if (error) throw error;
+        res.sendStatus(201);
+      });
+    }
+  });
+});
+
+// ADMIN REQUESTS
 // Eliminar usuario
 app.delete("/deleteUser/:nick", (req, res) => {
   const { nick } = req.params;
@@ -136,6 +221,22 @@ app.delete("/deleteUser/:nick", (req, res) => {
       res.status(404).json({
         response: "Usuario no encontrado...",
       });
+    }
+  });
+});
+
+// Show stats
+// Top 3 países más registrados
+app.get("/stats", (req, res) => {
+  const top3CountriesSQL =
+    "SELECT country FROM Usuario GROUP BY country ORDER BY count(country) DESC LIMIT 3";
+
+  connection.query(top3CountriesSQL, (err, results) => {
+    if (err) throw err;
+    if (results.length > 0) {
+      res.status(200).json(results);
+    } else {
+      res.status(404).send("Vaya... el contenido que buscas no existe.");
     }
   });
 });
