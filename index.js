@@ -32,7 +32,7 @@ app.get("/", (req, res) => {
 // USER REQUESTS
 // Obtener todos los usuarios
 app.get("/users", (req, res) => {
-  const getUsersSQL = "SELECT * FROM Usuario";
+  const getUsersSQL = "SELECT * FROM Usuario ORDER BY nickName ASC";
 
   connection.query(getUsersSQL, (err, results) => {
     if (err) throw err;
@@ -121,7 +121,7 @@ app.post("/login", (req, res) => {
 
 // Obtener todos los portfolios
 app.get("/portfolios", (req, res) => {
-  const getPortfoliosSQL = "SELECT * FROM Portfolio";
+  const getPortfoliosSQL = "SELECT * FROM Portfolio ORDER BY nickName ASC";
 
   connection.query(getPortfoliosSQL, (err, results) => {
     if (err) throw err;
@@ -134,17 +134,34 @@ app.get("/portfolios", (req, res) => {
 });
 
 // Obtener portfolio por nickName
-app.get("/users/:nick", (req, res) => {
+app.get("/portfolios/:nick", (req, res) => {
   const { nick } = req.params;
 
-  const getOnePortfolioSQL = `SELECT * FROM Portfolio WHERE nickName = "${nick}"`;
+  const getOnePortfolioSQL = `SELECT coinSymbol FROM Portfolio WHERE nickName = "${nick}"`;
 
   connection.query(getOnePortfolioSQL, (err, result) => {
     if (err) throw err;
     if (result.length > 0) {
       res.status(200).json(result);
     } else {
-      res.status(404).send("Usuario no encontrado...");
+      res.status(404).send("Contenido no encontrado...");
+    }
+  });
+});
+
+// Obtener moneda del portfolio del usuario
+app.get("/portfolios/:nick/:coin", (req, res) => {
+  const { nick } = req.params;
+  const { coin } = req.params;
+
+  const getCoinSQL = `SELECT coinSymbol FROM Portfolio WHERE coinSymbol = "${coin}" AND nickName = "${nick}"`;
+
+  connection.query(getCoinSQL, (err, result) => {
+    if (err) throw err;
+    if (result.length > 0) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).send("Contenido no encontrado...");
     }
   });
 });
@@ -157,7 +174,11 @@ app.post("/addCoin", (req, res) => {
   };
 
   const checkCoinSQL =
-    "SELECT * FROM Moneda WHERE symbol = '" + addCoinObj.coinSymbol + "'";
+    "SELECT * FROM Portfolio WHERE coinSymbol = '" +
+    addCoinObj.coinSymbol +
+    "' AND nickName = '" +
+    addCoinObj.nickName +
+    "'";
   const addCoinSQL = "INSERT INTO Portfolio SET ?";
 
   connection.query(checkCoinSQL, (error, result) => {
@@ -173,30 +194,41 @@ app.post("/addCoin", (req, res) => {
   });
 });
 
-// Eliminar moneda del portfolio
-app.delete("/delCoin", (req, res) => {
-  const delCoinObj = {
-    nickName: req.body.nickName,
-    coinSymbol: req.body.coinSymbol,
-  };
+// Obtener portfolio por nickName
+app.get("/portfolios/:nick/:coin", (req, res) => {
+  const { nick } = req.params;
+  const { coin } = req.params;
 
-  const checkCoinSQL =
-    "SELECT * FROM Moneda WHERE symbol = '" + delCoinObj.coinSymbol + "'";
-  const delCoinSQL =
-    "DELETE FROM Portfolio WHERE nickName = '" +
-    delCoinObj.nickName +
-    "' AND coinSymbol = '" +
-    delCoinObj.coinSymbol +
-    "'";
+  const getCoinSQL = `SELECT coinSymbol FROM Portfolio WHERE coinSymbol = "${coin}" AND nickName = "${nick}"`;
+
+  connection.query(getCoinSQL, (err, result) => {
+    if (err) throw err;
+    if (result.length > 0) {
+      res.status(200).json(result);
+    } else {
+      res.status(404).send("Contenido no encontrado...");
+    }
+  });
+});
+
+// Eliminar moneda del portfolio
+app.delete("/delCoin/:nick/:coin", (req, res) => {
+  const { nick } = req.params;
+  const { coin } = req.params;
+
+  const checkCoinSQL = `SELECT coinSymbol FROM Portfolio WHERE coinSymbol = "${coin}" AND nickName = "${nick}"`;
+  const delCoinSQL = `DELETE FROM Portfolio WHERE coinSymbol = "${coin}" AND nickName = "${nick}"`;
 
   connection.query(checkCoinSQL, (error, result) => {
     if (error) throw error;
     if (result.length > 0) {
-      res.sendStatus(409);
-    } else {
-      connection.query(delCoinSQL, delCoinObj, (error) => {
+      connection.query(delCoinSQL, (error) => {
         if (error) throw error;
-        res.sendStatus(201);
+        res.status(200).send("¡Moneda eliminada correctamente!");
+      });
+    } else {
+      res.status(404).json({
+        response: "Moneda no encontrada...",
       });
     }
   });
@@ -227,7 +259,22 @@ app.delete("/deleteUser/:nick", (req, res) => {
 
 // Show stats
 // Top 3 países más registrados
-app.get("/stats", (req, res) => {
+app.get("/coinStats", (req, res) => {
+  const top3CoinsSQL =
+    "SELECT coinSymbol FROM Portfolio GROUP BY coinSymbol ORDER BY count(coinSymbol) DESC LIMIT 3";
+
+  connection.query(top3CoinsSQL, (err, results) => {
+    if (err) throw err;
+    if (results.length > 0) {
+      res.status(200).json(results);
+    } else {
+      res.status(404).send("Vaya... el contenido que buscas no existe.");
+    }
+  });
+});
+
+// Top 3 países más registrados
+app.get("/countryStats", (req, res) => {
   const top3CountriesSQL =
     "SELECT country FROM Usuario GROUP BY country ORDER BY count(country) DESC LIMIT 3";
 
