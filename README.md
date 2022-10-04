@@ -1,1 +1,1 @@
-# cryptoaholic-api
+# Cryptoaholic API
